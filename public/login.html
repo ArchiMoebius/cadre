@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Cadre.Today</title>
+
+  <script type="text/javascript" src="/socketcluster.js"></script>
+  <script type="text/javascript" src="/js/utils.js"></script>
+
+  <link media="all" rel="stylesheet" href="/css/login.css"></link>
+</head>
+
+<body>
+  <div id="messageAndLoginWrapper">
+    <div id="failure">
+      Something went wrong...Your browser might be outdated (ergo unable to use this page)!...
+    </div>
+    <div id="load">
+      Please wait while we load things...
+    </div>
+    <div id="register">
+      <div>
+        <label for="email">E-Mail</label>
+        <input id="email_register" type="text" name="email" value="" />
+      </div>
+      <div>
+        <label for="password_register">Password</label>
+        <input id="password_register" type="password" name="password_register" value="" />
+      </div>
+      <div>
+        <label for="displayname_register">Display Name</label>
+        <input id="displayname_register" type="text" name="displayname_register" value="" />
+      </div>
+      <div>
+        <input id="login_button" type="button" name="login" value="Back to Login" />
+        <input id="register_submit" type="button" name="register" value="Register" />
+      </div>
+    </div>
+    <div id="login">
+      <div>
+        <label for="email">E-Mail</label>
+        <input id="email" type="text" name="email" value="" />
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" value="" onkeypress="return login(event)" />
+      </div>
+      <div>
+        <input id="authenticate" type="button" name="login" value="Login" />
+        <input id="register_button" type="button" name="register" value="Register" />
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+
+    var socket = socketCluster.connect();
+    var selectors = {
+      wrapper: document.querySelector('div#messageAndLoginWrapper'),
+      load: document.querySelector('div#load'),
+      failure: document.querySelector('div#failure'),
+      register: {
+        wrapper: document.querySelector('div#register'),
+        email: document.querySelector('input#email_register'),
+        password: document.querySelector('input#password_register'),
+        displayname: document.querySelector('input#displayname_register'),
+        registerButton: document.querySelector('input#register_submit'),
+        loginButton: document.querySelector('input#login_button')
+      },
+      login: {
+        wrapper: document.querySelector('div#login'),
+        email: document.querySelector('input#email'),
+        password: document.querySelector('input#password'),
+        authenticate: document.querySelector('input#authenticate'),
+        registerButton: document.querySelector('input#register_button')
+      }
+    };
+    var page = {
+      showRegister: function() {
+        selectors.load.style.display = "none";
+        selectors.failure.style.display = "none";
+        selectors.login.wrapper.style.display = "none";
+        selectors.register.wrapper.style.display = "flex";
+        selectors.wrapper.style.display = "flex";
+        selectors.register.email.focus();
+      },
+      showLogin: function() {
+        selectors.load.style.display = "none";
+        selectors.failure.style.display = "none";
+        selectors.login.wrapper.style.display = "flex";
+        selectors.register.wrapper.style.display = "none";
+        selectors.wrapper.style.display = "flex";
+
+        if (selectors.login.email.value) {
+          selectors.login.password.focus();
+        } else {
+          selectors.login.email.focus();
+        }
+      },
+      showFailure: function() {
+        selectors.load.style.display = "none";
+        selectors.login.wrapper.style.display = "none";
+        selectors.failure.style.display = "flex";
+        selectors.wrapper.style.display = "flex";
+      },
+      register: function(socket) {
+        socket.emit(
+          'register', {
+            email: selectors.register.email.value,
+            password: selectors.register.password.value,
+            displayname: selectors.register.displayname.value
+          },
+          function(response) {
+
+            selectors.register.password.value = '';
+
+            if (response && response.error) {
+              notifyUser(response.error);
+            } else {
+              selectors.login.email.value = selectors.register.email.value;
+              selectors.login.password.value = selectors.register.password.value;
+              page.showLogin();
+            }
+          }
+        )
+      },
+      authenticate: function(socket) {
+        socket.emit(
+          'login', {
+            email: selectors.login.email.value,
+            password: selectors.login.password.value
+          },
+          function(response) {
+
+            selectors.login.password.value = '';
+
+            if (response && response.error) {
+              notifyUser(response.error);
+            }
+          }
+        )
+      }
+    };
+
+    function login(evt) {
+
+      if (evt.which == 13 || evt.keyCode == 13) {
+        page.authenticate(socket);
+        return false;
+      }
+      return true;
+    }
+
+    selectors.login.authenticate.onclick = function() {
+      page.authenticate(socket);
+    };
+
+    selectors.register.loginButton.onclick = function() {
+      page.showLogin();
+    };
+
+    selectors.register.registerButton.onclick = function() {
+      page.register(socket);
+    };
+
+    selectors.login.registerButton.onclick = function() {
+
+      if (selectors.login.email.value) {
+        selectors.register.email.value = selectors.login.email.value;
+      }
+
+      if (selectors.login.password.value) {
+        selectors.register.password.value = selectors.login.password.value;
+      }
+
+      page.showRegister();
+    };
+
+    // TODO: selectors.login.email.onblur check if email exists using bloomfilter, change text from login to register if doesn't exist?
+
+    socket.on('error', function(err) {
+      console.error(err); //TODO: notifyUser(err);?
+      page.showFailure(); //TODO: catch all the error states and take the correct action (fail gracefully if possible...)
+    });
+
+    socket.on('connect', function(status) {
+
+      if (!status.isAuthenticated) {
+        page.showLogin();
+      }
+    });
+
+    socket.on('authenticate', function(authToken) {
+      window.location = "index.html";
+    });
+  </script>
+</body>
+
+</html>

@@ -13,6 +13,7 @@
     "express": "4.16.3",
     "helmet": "^3.12.1",
     "minimist": "1.1.0",
+    "moment": "^2.22.2",
     "morgan": "^1.9.0",
     "sc-auth": "^5.0.1",
     "sc-errors": "^1.4.0",
@@ -21,6 +22,7 @@
     "scc-broker-client": "^5.0.2",
     "sequelize": "^4.38.0",
     "serve-static": "1.13.2",
+    "sleep": "^5.1.1",
     "socketcluster": "^13.1.8",
     "socketcluster-client": "^13.0.0",
     "sqlite3": "^4.0.1"
