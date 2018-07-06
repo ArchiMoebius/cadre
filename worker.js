@@ -9,8 +9,8 @@ const SCWorker = require('socketcluster/scworker');
 const healthChecker = require('sc-framework-health-check');
 
 const database = require('./database.js');
-const messages = require('./messages.js');
 const authentication = require('./authentication.js');
+const message = require('./message');
 const acs = require('./acs.js');
 
 database.setup();
@@ -51,6 +51,7 @@ class Worker extends SCWorker {
     scServer.on('connection', function(socket) {
        authentication.attach(scServer, socket);
        acs.attach(scServer, socket);
+       message.attach(scServer, socket);
     });
   }
 }

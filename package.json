@@ -9,12 +9,14 @@
     }
   ],
   "dependencies": {
+    "async": "^2.6.1",
     "connect": "^3.6.6",
     "express": "4.16.3",
     "helmet": "^3.12.1",
     "minimist": "1.1.0",
     "moment": "^2.22.2",
     "morgan": "^1.9.0",
+    "redis": "^2.8.0",
     "sc-auth": "^5.0.1",
     "sc-errors": "^1.4.0",
     "sc-framework-health-check": "^2.0.0",

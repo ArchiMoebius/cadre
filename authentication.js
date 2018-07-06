@@ -72,9 +72,10 @@ module.exports.attach = function(scServer, socket) {
       if (queryResult) {
         socket.setAuthToken({
           verified: queryResult.verified,
-          username: queryResult.displayname,
+          displayname: queryResult.displayname,
+          emailhash: queryResult.email,
           channels: [
-            '/user/' + emailHash
+            '/user/' + queryResult.email
           ] // TODO: get users channels and append them here?
         }, {
           expiresIn: tokenExpiresInSeconds

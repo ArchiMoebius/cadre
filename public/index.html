@@ -9,6 +9,7 @@
   <title>Cadre.Today</title>
 
   <script type="text/javascript" src="/socketcluster.js"></script>
+  <script type="text/javascript" src="/js/utils.js"></script>
 
   <link media="all" rel="stylesheet" href="/css/index.css"></link>
 
@@ -26,35 +27,31 @@
   <div id="app">
     <header>
       <nav>
-        <img src="/img/logo.png"/ width="32" height="32" alt="Cadre.today">
+        <img src="/img/logo.png" / width="32" height="32" alt="Cadre.today">
         <a class="active" href="/index.html">Home</a>
         <a href="/streams.html">Streams</a>
         <a href="javascript:void(0)" id="logout" class="tooltip">Logout<span class="tooltiptext" id="username"></span></a>
       </nav>
     </header>
     <div id="main">
+      <div id="messages">
+      </div>
+      <div id="post_message_form">
+        <div>
+          <label for="form_message">Message</label>
+          <textarea rows="8" cols="80" maxlength="4096" id="form_message" name="form_message" placeholder="Type a message here!"></textarea>
+        </div>
+        <div>
+          <input type="button" value="Share!" id="form_message_button_post" />
+          <input type="button" value="Cancel..." id="form_message_button_reset" />
+          <input type="hidden" value="" id="form_message_channel" />
+        </div>
+      </div>
     </div>
     <footer>Footer</footer>
   </div>
 
   <script type="text/javascript">
-    function notifyUser(message) {
-
-      if (!("Notification" in window)) {
-        alert(message);
-      } else if (Notification.permission === "granted") {
-        new Notification(message);
-      } else if (Notification.permission === "denied") {
-        alert(message);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission(function(permission) {
-          if (permission === "granted") {
-            var notification = new Notification(message);
-          }
-        });
-      }
-    }
-
     var socket = socketCluster.connect();
     var selectors = {
       wrapper: document.querySelector('div#messageWrapper'),
@@ -67,12 +64,69 @@
           navbar: document.querySelector('div#app header nav'),
           username: document.querySelector('div#app header nav a span#username'),
           logout: document.querySelector('a#logout'),
-          main: document.querySelector('div#app div#main')
         },
-      },
+        main: document.querySelector('div#app div#main'),
+        messages: document.querySelector('div#app div#messages'),
+        postMessageForm: {
+          wrapper: document.querySelector('div#post_message_form'),
+          textarea: document.querySelector('textarea#form_message_text'),
+          channel: document.querySelector('input#form_message_channel'),
+          buttonPost: document.querySelector('input#form_message_button_post'),
+          buttonCancel: document.querySelector('input#form_message_button_reset')
+        }
+      }
     };
 
+    function Message(message) {
+      console.log("adding message:", message);
+      var messageContainer = document.createElement('div');
+
+      messageContainer.innerHTML = message.body;
+
+      return messageContainer;
+    }
+
+    function addMessagesToPage(messages) {
+
+      if (messages && messages.length > 0) {
+
+        if (messages.children.length <= 0) {
+          selectors.app.messages.innerHTML = '';
+        }
+
+        messages.forEach(function(message) {
+          selectors.app.messages.appendChild(Message(message));
+        });
+      } else {
+        selectors.app.messages.innerHTML = 'No messages at this time.';
+      }
+    }
+
+    function processChannelResponse(response) {
+      console.log('processChannelResponse', response);
+
+      if (!response) {
+        return false;
+      }
+
+      switch (response.type) {
+        case "messages":
+          addMessagesToPage(response.data);
+          break;
+        case "pm":
+      }
+    }
+
     var page = {
+      postMessage: function(to) {
+        socket.emit(
+          'add_message',
+          {
+            body: selectors.app.postMessageForm.textarea.value,
+            to: to
+          }
+        )
+      },
       showApp: function() {
         selectors.load.style.display = "none";
         selectors.wrapper.style.display = "none";
@@ -87,13 +141,28 @@
           selectors.app.header.username.innerHTML = "Bye " + authToken.username;
 
           authToken.channels.forEach(function(channel) {
-            var subscription = socket.subscribe(channel, {'waitForAuth': true});
-
-            subscription.watch(function(data) {
-              console.log("got data!", data);
+            var subscription = socket.subscribe(channel, {
+              'waitForAuth': true
             });
+
+            subscription.watch(processChannelResponse);
+
             subscription.on('subscribe', function(channel, options) {
-              subscription.publish({"message": "hey world, you suck." + channel});
+              // TODO: show post form as we are ready
+
+              socket.emit(
+                'load_channel', {
+                  channel: channel,
+                  start: 0,
+                  end: 10
+                },
+                function(err) {
+
+                  if (err) {
+                    console.log(err);
+                  }
+                }
+              );
             });
           });
         }
@@ -103,6 +172,14 @@
         selectors.failure.style.display = "flex";
         selectors.wrapper.style.display = "flex";
       }
+    };
+
+    selectors.app.postMessageForm.buttonPost.onclick = function() {
+      page.postMessage();
+    };
+
+    selectors.app.postMessageForm.buttonCancel.onclick = function() {
+      selector.app.postMessageForm.textarea.value = '';
     };
 
     selectors.app.header.logout.onclick = function() {
